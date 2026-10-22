@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+<title>Aceites Lubricantes — Taller Interactivo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+  :root{
+    --bg: #0a1120;
+    --bg-elevated: #101a2e;
+    --surface: #16223c;
+    --surface-2: #1c2b4a;
+    --border: #223252;
+    --border-light: #33456e;
+    --metal: #7d92b8;
+    --metal-light: #aabbd9;
+    --green: #5e7ca1;
+    --green-bright: #9fb3d6;
+    --green-dim: #16223c;
+    --gold: #aabbd9;
+    --gold-bright: #d3ddef;
+    --text: #eef2f8;
+    --text-muted: #8b9dbf;
+    --danger: #e2604f;
+    --danger-dim: #2c2320;
+  }
+  :root:not([data-theme="light"]){ color-scheme: dark; }
+  html, body { background: var(--bg); }
+  * { -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: 'Host Grotesk', sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    background-image:
+      radial-gradient(circle at 15% 8%, rgba(94,124,161,0.10), transparent 40%),
+      radial-gradient(circle at 85% 92%, rgba(170,187,217,0.07), transparent 45%);
+    overscroll-behavior: none;
+  }
+  .font-display { font-family: 'Host Grotesk', sans-serif; font-weight: 600; letter-spacing: -0.01em; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 8px; }
+
+  .brushed-metal {
+    background:
+      repeating-linear-gradient(100deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 3px),
+      linear-gradient(180deg, #24304e 0%, #121a2e 100%);
+  }
+
+  @keyframes oilFlow {
+    0% { background-position: -120% 0; }
+    100% { background-position: 220% 0; }
+  }
+  .oil-sheen {
+    background: linear-gradient(100deg, transparent 30%, rgba(211,221,239,0.55) 45%, rgba(94,124,161,0.55) 55%, transparent 70%);
+    background-size: 300% 100%;
+    animation: oilFlow 3.2s linear infinite;
+  }
+
+  @keyframes riseFade {
+    0% { transform: translateY(0) scale(1); opacity: 0; }
+    15% { opacity: 0.9; }
+    100% { transform: translateY(-46px) scale(0.4); opacity: 0; }
+  }
+  .oil-bead { animation: riseFade 2.6s ease-in infinite; }
+
+  @keyframes needleSweep {
+    0%, 100% { transform: rotate(-8deg); }
+    50% { transform: rotate(8deg); }
+  }
+
+  @keyframes softIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .enter { animation: softIn 0.35s ease-out both; }
+
+  .card-select {
+    transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.15s ease;
+  }
+  .card-select:active { transform: scale(0.98); }
+
+  .press-btn { transition: transform 0.12s ease, filter 0.15s ease, box-shadow 0.15s ease; }
+  .press-btn:active { transform: scale(0.96); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .oil-sheen, .oil-bead, .enter { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useMemo, useRef, useEffect } = React;
+
+/* ---------------------------------------------------------
+   ICONOS (SVG propios, estilo lineal — sin dependencias)
+--------------------------------------------------------- */
+const IconGear = ({size=22, className=""}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" strokeWidth="1.6"/>
+    <path d="M19.4 13.5a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V19.5a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H4.5a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H10.5a1.65 1.65 0 0 0 1-1.51V4.5a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V10.5a1.65 1.65 0 0 0 1.51 1H19.5a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.01 1Z" stroke="currentColor" strokeWidth="1.3"/>
+  </svg>
+);
+const IconDrop = ({size=22, className=""}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M12 3s6.5 7.2 6.5 11.2A6.5 6.5 0 0 1 5.5 14.2C5.5 10.2 12 3 12 3Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/>
+    <path d="M9.2 15.2a2.8 2.8 0 0 0 2.6 2.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+  </svg>
+);
+const IconFlask = ({size=22, className=""}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M9.5 3h5M10 3v5.2L5.6 16a2.3 2.3 0 0 0 2 3.4h8.8a2.3 2.3 0 0 0 2-3.4L14 8.2V3" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/>
+    <path d="M8.2 14h7.6" stroke="currentColor" strokeWidth="1.4"/>
+  </svg>
+);
+const IconBrain = ({size=22, className=""}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M9 4.2a2.6 2.6 0 0 0-2.6 2.6 2.5 2.5 0 0 0-1.9 2.4c0 .5.15.95.4 1.33A2.6 2.6 0 0 0 5 14.5a2.6 2.6 0 0 0 2.2 2.57A2.6 2.6 0 0 0 9.8 19.8h.2V4.2H9Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+    <path d="M15 4.2a2.6 2.6 0 0 1 2.6 2.6 2.5 2.5 0 0 1 1.9 2.4c0 .5-.15.95-.4 1.33a2.6 2.6 0 0 1-.1 3.97 2.6 2.6 0 0 1-2.2 2.57 2.6 2.6 0 0 1-2.6 2.73h-.2V4.2h.2Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+  </svg>
+);
+const IconCheck = ({size=18, className=""}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M5 12.5l4.5 4.5L19.5 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+const IconX = ({size=18, className=""}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
+  </svg>
+);
+const IconArrow = ({size=18, className=""}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M4 12h15M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+const IconClose = ({size=20, className=""}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+  </svg>
+);
+const IconThermo = ({size=20, className=""}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M11 4.5a2 2 0 0 1 4 0V13a4 4 0 1 1-4 0V4.5Z" stroke="currentColor" strokeWidth="1.4"/>
+    <circle cx="13" cy="17" r="1.4" fill="currentColor"/>
+  </svg>
+);
+const IconGaugeMini = ({size=20, className=""}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M4 15a8 8 0 1 1 16 0" stroke="currentColor" strokeWidth="1.4"/>
+    <path d="M12 15l3.2-3.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+  </svg>
+);
+const IconCoin = ({size=20, className=""}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <circle cx="12" cy="12" r="7.5" stroke="currentColor" strokeWidth="1.4"/>
+    <path d="M12 8.5v7M9.8 10c0-1 1-1.7 2.2-1.7s2.2.6 2.2 1.5c0 2-4.4 1.1-4.4 3 0 .9 1 1.6 2.2 1.6s2.2-.6 2.2-1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+  </svg>
+);
+const IconLeaf = ({size=20, className=""}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    <path d="M19 5c-8 0-14 4-14 12 8 0 14-4 14-12Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+    <path d="M6 18C10 12 14 9 19 5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+  </svg>
+);
+
+/* ---------------------------------------------------------
+   DATOS (extraídos exclusivamente del PDF)
+--------------------------------------------------------- */
+const FUNCIONES = [
+  { id: "friccion", titulo: "Reducir la fricción y el desgaste",
+    texto: "Crea una película protectora entre las piezas móviles para que no se destruyan entre sí." },
+  { id: "enfriar", titulo: "Enfriar el sistema",
+    texto: "Absorbe y transporta el calor fuera de las zonas más calientes del motor." },
+  { id: "limpiar", titulo: "Limpiar los componentes",
+    texto: "Arrastra las partículas de carbón, hollín y residuos metálicos hacia el filtro para que no rayen las piezas." },
+  { id: "corrosion", titulo: "Prevenir la corrosión",
+    texto: "Protege las superficies metálicas internas del agua y los ácidos químicos." },
+  { id: "sellar", titulo: "Sellar el espacio",
+    texto: "En los motores de combustión, ayuda a sellar los anillos de los pistones para que no se pierda la compresión." },
+];
+
+const TIPOS = [
+  {
+    id: "mineral", nombre: "Aceites minerales", icon: IconDrop, color: "var(--metal-light)",
+    puntos: [
+      "Se obtienen a partir del refinado del petróleo crudo.",
+      "Son los lubricantes más utilizados por su bajo costo.",
+      "Brindan una buena protección en condiciones normales de trabajo.",
+      "Requieren cambios más frecuentes porque se degradan más rápido que los sintéticos.",
+      "Se usan en motores antiguos, maquinaria industrial, compresores y equipos de uso moderado.",
+    ],
+  },
+  {
+    id: "sintetico", nombre: "Aceites sintéticos", icon: IconFlask, color: "var(--green-bright)",
+    puntos: [
+      "Se producen mediante procesos químicos, lo que permite controlar mejor su composición.",
+      "Tienen mayor resistencia a temperaturas muy altas y muy bajas.",
+      "Reducen el desgaste de las piezas y disminuyen la fricción.",
+      "Mantienen su viscosidad durante más tiempo y prolongan la vida útil del motor o la maquinaria.",
+      "Son ideales para vehículos modernos, motores de alto rendimiento y equipos que trabajan en condiciones extremas.",
+      "Su principal desventaja es que tienen un costo más elevado.",
+    ],
+  },
+  {
+    id: "semisintetico", nombre: "Aceites semisintéticos", icon: IconGaugeMini, color: "var(--gold-bright)",
+    puntos: [
+      "Son una mezcla de aceites minerales y sintéticos.",
+      "Ofrecen un mejor rendimiento que los minerales, pero son más económicos que los sintéticos.",
+      "Proporcionan buena protección contra el desgaste y la oxidación.",
+      "Tienen una vida útil intermedia y requieren menos cambios que los minerales.",
+      "Se utilizan en automóviles de uso diario, motocicletas y maquinaria de exigencia media.",
+    ],
+  },
+  {
+    id: "vegetal", nombre: "Aceites vegetales", icon: IconLeaf, color: "var(--metal)",
+    puntos: [
+      "Se elaboran a partir de aceites de origen vegetal, como soja, girasol, colza o palma.",
+      "Son biodegradables y generan un menor impacto ambiental.",
+      "Poseen buenas propiedades lubricantes y una alta capacidad para reducir la fricción.",
+      "Se utilizan en maquinaria agrícola, equipos forestales, maquinaria alimentaria y aplicaciones donde puede haber contacto con el medio ambiente.",
+      "Su principal desventaja es que pueden oxidarse más rápidamente y soportan peor las altas temperaturas si no cuentan con aditivos especiales.",
+    ],
+  },
+];
+
+const PREGUNTAS = [
+  { q: "¿Qué tipo de aceite se obtiene a partir del refinado del petróleo crudo?",
+    opciones: ["Vegetal", "Mineral", "Sintético", "Semisintético"], correcta: 1 },
+  { q: "¿Qué tipo de aceite se fabrica mediante procesos químicos?",
+    opciones: ["Vegetal", "Mineral", "Sintético", "Ninguno"], correcta: 2 },
+  { q: "¿Qué tipo de aceite es una mezcla de aceites minerales y sintéticos?",
+    opciones: ["Vegetal", "Sintético", "Mineral", "Semisintético"], correcta: 3 },
+  { q: "¿Cuál de estos tipos de aceite es biodegradable?",
+    opciones: ["Vegetal", "Mineral", "Sintético", "Ninguno"], correcta: 0 },
+  { q: "¿Cuál es una de las funciones principales de los aceites lubricantes?",
+    opciones: ["Aumentar la fricción", "Reducir la fricción y el desgaste", "Aumentar la temperatura", "Eliminar el combustible"], correcta: 1 },
+];
+
+/* ---------------------------------------------------------
+   LÓGICA DEL SIMULADOR — basada solo en el PDF
+--------------------------------------------------------- */
+function calcularResultado(sel) {
+  const score = { mineral: 0, sintetico: 0, semisintetico: 0, vegetal: 0 };
+  const razones = { mineral: [], sintetico: [], semisintetico: [], vegetal: [] };
+
+  if (sel.temperatura === "normal") {
+    score.mineral += 2; razones.mineral.push("brinda buena protección en condiciones normales de trabajo");
+  }
+  if (sel.temperatura === "alta" || sel.temperatura === "baja") {
+    score.sintetico += 3; razones.sintetico.push("tiene mayor resistencia a temperaturas muy altas y muy bajas");
+  }
+  if (sel.temperatura === "alta") {
+    score.vegetal -= 2;
+  }
+
+  if (sel.exigencia === "moderada") {
+    score.mineral += 2; razones.mineral.push("se usa en equipos de uso moderado");
+  }
+  if (sel.exigencia === "media") {
+    score.semisintetico += 3; razones.semisintetico.push("se utiliza en maquinaria de exigencia media");
+  }
+  if (sel.exigencia === "extrema") {
+    score.sintetico += 3; razones.sintetico.push("es ideal para equipos que trabajan en condiciones extremas");
+  }
+
+  if (sel.costo === "bajo") {
+    score.mineral += 3; razones.mineral.push("es el lubricante más utilizado por su bajo costo");
+  }
+  if (sel.costo === "intermedio") {
+    score.semisintetico += 3; razones.semisintetico.push("es más económico que el sintético, con un costo intermedio");
+  }
+  if (sel.costo === "nopriordad") {
+    score.sintetico += 2; razones.sintetico.push("el costo elevado no representa un problema en este caso");
+  }
+
+  if (sel.ambiental === "importante") {
+    score.vegetal += 4; razones.vegetal.push("es biodegradable y genera un menor impacto ambiental");
+  }
+
+  const max = Math.max(score.mineral, score.sintetico, score.semisintetico, score.vegetal);
+  if (max <= 0) return { empatados: [], razones, sinDatos: true };
+  const ganadores = Object.keys(score).filter((k) => score[k] === max);
+  return { empatados: ganadores, razones, sinDatos: false, score };
+}
+
+const NOMBRE_TIPO = {
+  mineral: "Aceite mineral",
+  sintetico: "Aceite sintético",
+  semisintetico: "Aceite semisintético",
+  vegetal: "Aceite vegetal",
+};
+
+/* ---------------------------------------------------------
+   PIEZA VISUAL: animación de película de aceite
+--------------------------------------------------------- */
+function OilFilmAnimation() {
+  return (
+    <div className="relative w-full max-w-sm mx-auto h-40 select-none" aria-hidden="true">
+      <div className="absolute inset-x-4 top-2 h-14 rounded-md brushed-metal border border-[var(--border-light)] shadow-lg"
+           style={{ boxShadow: "0 6px 14px rgba(0,0,0,0.45)" }} />
+      <div className="absolute inset-x-4 bottom-2 h-14 rounded-md brushed-metal border border-[var(--border-light)] shadow-lg"
+           style={{ boxShadow: "0 -6px 14px rgba(0,0,0,0.45)" }} />
+      <div className="absolute inset-x-4 top-[62px] h-[56px] rounded-sm overflow-hidden border-y border-[var(--gold)]/30">
+        <div className="oil-sheen w-full h-full opacity-80" />
+        {[0,1,2,3,4].map((i) => (
+          <span key={i}
+            className="oil-bead absolute rounded-full"
+            style={{
+              left: `${8 + i * 20}%`, bottom: "6px",
+              width: "5px", height: "5px",
+              background: i % 2 ? "var(--gold-bright)" : "var(--green-bright)",
+              animationDelay: `${i * 0.45}s`,
+            }} />
+        ))}
+      </div>
+      <div className="absolute inset-x-4 top-[58px] text-center text-[11px] tracking-wide text-[var(--text-muted)]" style={{top: "72px"}}>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   PANTALLA 1 — FUNCIONES
+--------------------------------------------------------- */
+function PantallaFunciones({ onIrATipos }) {
+  const [activa, setActiva] = useState(null);
+  return (
+    <div className="enter px-5 pt-6 pb-4 max-w-2xl mx-auto">
+      <p className="font-display text-xs tracking-wider text-[var(--gold)] mb-1">Guía del taller · 1 de 4</p>
+      <h1 className="font-display text-3xl sm:text-4xl font-semibold text-[var(--text)] leading-tight">
+        Aceites lubricantes
+      </h1>
+      <p className="mt-2 text-[15px] text-[var(--text-muted)] max-w-md">
+        Su función principal es evitar el contacto directo entre piezas en movimiento.
+      </p>
+
+      <div className="mt-6 rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] py-5">
+        <OilFilmAnimation />
+      </div>
+
+      <h2 className="font-display text-base font-medium text-[var(--metal-light)] mt-7 mb-3">
+        Cinco funciones, un mismo objetivo
+      </h2>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {FUNCIONES.map((f, i) => {
+          const isActive = activa === i;
+          return (
+            <button
+              key={f.id}
+              onClick={() => setActiva(isActive ? null : i)}
+              className={`card-select text-left rounded-xl p-4 border ${
+                isActive
+                  ? "border-[var(--green-bright)] bg-[var(--green-dim)]"
+                  : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-light)]"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <span className={`font-display text-[15px] font-medium ${isActive ? "text-[var(--green-bright)]" : "text-[var(--text)]"}`}>
+                  {f.titulo}
+                </span>
+                <span className={`mt-0.5 flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center border ${
+                  isActive ? "border-[var(--green-bright)] bg-[var(--green-bright)]/15" : "border-[var(--border-light)]"
+                }`}>
+                  <span className={`text-xs font-display ${isActive ? "text-[var(--green-bright)]" : "text-[var(--text-muted)]"}`}>{i+1}</span>
+                </span>
+              </div>
+              {isActive && (
+                <p className="enter mt-2.5 text-[13.5px] leading-relaxed text-[var(--text)]/90">
+                  {f.texto}
+                </p>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <button
+        onClick={onIrATipos}
+        className="press-btn mt-7 w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--green)] hover:bg-[var(--green-bright)] text-[#0c100e] font-display font-semibold text-[15px] px-5 py-3"
+      >
+        Conocer los tipos <IconArrow size={16} />
+      </button>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   PANTALLA 2 — TIPOS
+--------------------------------------------------------- */
+function PantallaTipos({ onIrASimulador }) {
+  const [abierto, setAbierto] = useState(null);
+  const tipo = TIPOS.find((t) => t.id === abierto);
+
+  return (
+    <div className="enter px-5 pt-6 pb-4 max-w-2xl mx-auto">
+      <p className="font-display text-xs tracking-wider text-[var(--gold)] mb-1">Guía del taller · 2 de 4</p>
+      <h1 className="font-display text-2xl sm:text-3xl font-semibold text-[var(--text)]">Tipos de aceites lubricantes</h1>
+      <p className="mt-2 text-[15px] text-[var(--text-muted)] max-w-md">
+        Tocá cada tarjeta para ver sus características completas.
+      </p>
+
+      <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {TIPOS.map((t) => {
+          const Icon = t.icon;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setAbierto(t.id)}
+              className="card-select text-left rounded-xl p-4 border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-light)] flex flex-col gap-3"
+            >
+              <div className="flex items-center justify-between">
+                <span className="w-10 h-10 rounded-lg flex items-center justify-center brushed-metal border border-[var(--border-light)]">
+                  <Icon size={20} className="" style={{ color: t.color }} />
+                </span>
+                <IconArrow size={16} className="text-[var(--text-muted)]" />
+              </div>
+              <div>
+                <h3 className="font-display text-[16px] font-medium text-[var(--text)]">{t.nombre}</h3>
+                <p className="text-[12.5px] text-[var(--text-muted)] mt-1 line-clamp-2">{t.puntos[0]}</p>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      <button
+        onClick={onIrASimulador}
+        className="press-btn mt-7 w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--gold)] hover:bg-[var(--gold-bright)] text-[#0c100e] font-display font-semibold text-[15px] px-5 py-3"
+      >
+        Probar el simulador <IconArrow size={16} />
+      </button>
+
+      {tipo && (
+        <div
+          className="fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm px-0 sm:px-4"
+          onClick={() => setAbierto(null)}
+        >
+          <div
+            className="enter w-full sm:max-w-md bg-[var(--bg-elevated)] border border-[var(--border-light)] rounded-t-2xl sm:rounded-2xl p-5 pb-8 sm:pb-5 max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <span className="w-11 h-11 rounded-lg flex items-center justify-center brushed-metal border border-[var(--border-light)]">
+                  <tipo.icon size={22} style={{ color: tipo.color }} />
+                </span>
+                <h3 className="font-display text-xl font-semibold text-[var(--text)]">{tipo.nombre}</h3>
+              </div>
+              <button onClick={() => setAbierto(null)} className="text-[var(--text-muted)] hover:text-[var(--text)] p-1">
+                <IconClose size={20} />
+              </button>
+            </div>
+            <ul className="space-y-2.5">
+              {tipo.puntos.map((p, i) => (
+                <li key={i} className="flex gap-2.5 text-[14px] leading-relaxed text-[var(--text)]/90">
+                  <span className="mt-2 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: tipo.color }} />
+                  {p}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   PANTALLA 3 — SIMULADOR
+--------------------------------------------------------- */
+function OpcionPill({ activo, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`press-btn px-3.5 py-2 rounded-full text-[13px] font-medium border ${
+        activo
+          ? "bg-[var(--green)] border-[var(--green)] text-[#0c100e]"
+          : "border-[var(--border-light)] text-[var(--text)]/85 hover:border-[var(--metal)]"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function GrupoSelector({ icon: Icon, label, opciones, valor, onChange }) {
+  return (
+    <div className="mb-5">
+      <div className="flex items-center gap-2 mb-2 text-[var(--metal-light)]">
+        <Icon size={17} />
+        <span className="font-display text-[13.5px] font-medium">{label}</span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {opciones.map((op) => (
+          <OpcionPill key={op.value} activo={valor === op.value} onClick={() => onChange(op.value)}>
+            {op.label}
+          </OpcionPill>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PantallaSimulador() {
+  const [sel, setSel] = useState({ temperatura: null, exigencia: null, costo: null, ambiental: null });
+  const [resultado, setResultado] = useState(null);
+
+  const completo = sel.temperatura && sel.exigencia && sel.costo && sel.ambiental;
+
+  const elegir = () => {
+    if (!completo) return;
+    setResultado(calcularResultado(sel));
+  };
+
+  const reiniciar = () => {
+    setSel({ temperatura: null, exigencia: null, costo: null, ambiental: null });
+    setResultado(null);
+  };
+
+  return (
+    <div className="enter px-5 pt-6 pb-4 max-w-2xl mx-auto">
+      <p className="font-display text-xs tracking-wider text-[var(--gold)] mb-1">Guía del taller · 3 de 4</p>
+      <h1 className="font-display text-2xl sm:text-3xl font-semibold text-[var(--text)]">¿Qué aceite elegir?</h1>
+      <p className="mt-2 text-[15px] text-[var(--text-muted)] max-w-md">
+        Elegí las condiciones de trabajo y descubrí qué tipo se ajusta mejor.
+      </p>
+
+      <div className="mt-6 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
+        <GrupoSelector
+          icon={IconThermo} label="Temperatura"
+          valor={sel.temperatura} onChange={(v) => setSel((s) => ({ ...s, temperatura: v }))}
+          opciones={[
+            { value: "normal", label: "Normal" },
+            { value: "alta", label: "Muy alta" },
+            { value: "baja", label: "Muy baja" },
+          ]}
+        />
+        <GrupoSelector
+          icon={IconGaugeMini} label="Exigencia del trabajo"
+          valor={sel.exigencia} onChange={(v) => setSel((s) => ({ ...s, exigencia: v }))}
+          opciones={[
+            { value: "moderada", label: "Moderada" },
+            { value: "media", label: "Media" },
+            { value: "extrema", label: "Extrema" },
+          ]}
+        />
+        <GrupoSelector
+          icon={IconCoin} label="Costo"
+          valor={sel.costo} onChange={(v) => setSel((s) => ({ ...s, costo: v }))}
+          opciones={[
+            { value: "bajo", label: "Bajo" },
+            { value: "intermedio", label: "Intermedio" },
+            { value: "nopriordad", label: "No es prioridad" },
+          ]}
+        />
+        <div className="mb-1">
+          <GrupoSelector
+            icon={IconLeaf} label="Impacto ambiental"
+            valor={sel.ambiental} onChange={(v) => setSel((s) => ({ ...s, ambiental: v }))}
+            opciones={[
+              { value: "importante", label: "Importante" },
+              { value: "nopriordad", label: "No es prioridad" },
+            ]}
+          />
+        </div>
+      </div>
+
+      <button
+        onClick={elegir}
+        disabled={!completo}
+        className={`press-btn mt-5 w-full inline-flex items-center justify-center gap-2 rounded-lg font-display font-semibold text-[16px] px-5 py-3.5 ${
+          completo
+            ? "bg-[var(--gold)] hover:bg-[var(--gold-bright)] text-[#0c100e]"
+            : "bg-[var(--surface-2)] text-[var(--text-muted)] cursor-not-allowed"
+        }`}
+      >
+        Elegir aceite
+      </button>
+
+      {resultado && (
+        <div className="enter mt-6">
+          <h2 className="font-display text-lg font-medium text-[var(--text)] mb-3">Resultado</h2>
+
+          {resultado.sinDatos ? (
+            <div className="rounded-xl border border-[var(--border-light)] bg-[var(--surface)] p-4">
+              <p className="text-[14px] text-[var(--text)]/90">
+                Estas condiciones no coinciden claramente con las características de un tipo específico
+                según la información disponible. Probá cambiando alguna de las opciones.
+              </p>
+            </div>
+          ) : resultado.empatados.length > 1 ? (
+            <div className="rounded-xl border border-[var(--gold)]/50 bg-[var(--surface)] p-4">
+              <p className="font-display text-[15px] text-[var(--gold-bright)] mb-2">
+                Estas condiciones pueden corresponder a más de un tipo de aceite.
+              </p>
+              <div className="space-y-3 mt-3">
+                {resultado.empatados.map((k) => (
+                  <div key={k} className="pl-3 border-l-2" style={{ borderColor: "var(--gold)" }}>
+                    <p className="font-display text-[14px] font-medium text-[var(--text)]">{NOMBRE_TIPO[k]}</p>
+                    <ul className="mt-1 space-y-1">
+                      {resultado.razones[k].map((r, i) => (
+                        <li key={i} className="text-[13px] text-[var(--text-muted)]">— {r}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-[var(--green-bright)]/50 bg-[var(--green-dim)] p-4">
+              <div className="flex items-center gap-2.5 mb-2">
+                {React.createElement(TIPOS.find(t => t.id === resultado.empatados[0]).icon, { size: 20, style: { color: "var(--green-bright)" } })}
+                <p className="font-display text-lg font-semibold text-[var(--green-bright)]">
+                  {NOMBRE_TIPO[resultado.empatados[0]]}
+                </p>
+              </div>
+              <p className="text-[13px] text-[var(--metal-light)] mb-2 font-display tracking-wide">Coincide porque:</p>
+              <ul className="space-y-1.5">
+                {resultado.razones[resultado.empatados[0]].map((r, i) => (
+                  <li key={i} className="text-[13.5px] text-[var(--text)]/90 flex gap-2">
+                    <IconCheck size={15} className="text-[var(--green-bright)] flex-shrink-0 mt-0.5" />
+                    {r}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <button
+            onClick={reiniciar}
+            className="press-btn mt-4 text-[13.5px] font-medium text-[var(--text-muted)] hover:text-[var(--text)] underline underline-offset-4"
+          >
+            Probar otra combinación
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   PANTALLA 4 — DESAFÍO
+--------------------------------------------------------- */
+function PantallaDesafio() {
+  const [idx, setIdx] = useState(0);
+  const [elegida, setElegida] = useState(null);
+  const [score, setScore] = useState(0);
+  const [terminado, setTerminado] = useState(false);
+
+  const pregunta = PREGUNTAS[idx];
+
+  const responder = (i) => {
+    if (elegida !== null) return;
+    setElegida(i);
+    if (i === pregunta.correcta) setScore((s) => s + 1);
+  };
+
+  const siguiente = () => {
+    if (idx + 1 >= PREGUNTAS.length) {
+      setTerminado(true);
+    } else {
+      setIdx((n) => n + 1);
+      setElegida(null);
+    }
+  };
+
+  const reiniciar = () => {
+    setIdx(0); setElegida(null); setScore(0); setTerminado(false);
+  };
+
+  if (terminado) {
+    return (
+      <div className="enter px-5 pt-10 pb-4 max-w-md mx-auto text-center">
+        <p className="font-display text-xs tracking-wider text-[var(--gold)] mb-1">Guía del taller · 4 de 4</p>
+        <div className="mx-auto w-16 h-16 rounded-full brushed-metal border border-[var(--border-light)] flex items-center justify-center mb-5 mt-4">
+          <IconBrain size={28} className="text-[var(--gold-bright)]" />
+        </div>
+        <h1 className="font-display text-2xl font-semibold text-[var(--text)]">Desafío completado</h1>
+        <p className="mt-3 font-display text-4xl font-bold" style={{ color: score >= 4 ? "var(--green-bright)" : "var(--gold-bright)" }}>
+          {score}/{PREGUNTAS.length}
+        </p>
+        <p className="mt-1 text-[14px] text-[var(--text-muted)]">respuestas correctas</p>
+        <button
+          onClick={reiniciar}
+          className="press-btn mt-7 inline-flex items-center gap-2 rounded-lg bg-[var(--green)] hover:bg-[var(--green-bright)] text-[#0c100e] font-display font-semibold text-[15px] px-6 py-3"
+        >
+          Volver a intentar
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="enter px-5 pt-6 pb-4 max-w-lg mx-auto">
+      <p className="font-display text-xs tracking-wider text-[var(--gold)] mb-1">Guía del taller · 4 de 4</p>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="font-display text-2xl font-semibold text-[var(--text)]">Desafío</h1>
+        <span className="text-[12.5px] font-display text-[var(--text-muted)]">Pregunta {idx + 1} / {PREGUNTAS.length}</span>
+      </div>
+
+      <div className="w-full h-1.5 rounded-full bg-[var(--surface-2)] overflow-hidden mb-6">
+        <div className="h-full bg-[var(--gold)] transition-all duration-300" style={{ width: `${((idx) / PREGUNTAS.length) * 100}%` }} />
+      </div>
+
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
+        <p className="font-display text-[16px] font-medium text-[var(--text)] leading-snug">{pregunta.q}</p>
+
+        <div className="mt-4 space-y-2.5">
+          {pregunta.opciones.map((op, i) => {
+            const esCorrecta = i === pregunta.correcta;
+            const esElegida = i === elegida;
+            let estilo = "border-[var(--border-light)] text-[var(--text)]/90 hover:border-[var(--metal)]";
+            if (elegida !== null) {
+              if (esCorrecta) estilo = "border-[var(--green-bright)] bg-[var(--green-dim)] text-[var(--green-bright)]";
+              else if (esElegida) estilo = "border-[var(--danger)] bg-[var(--danger-dim)] text-[var(--danger)]";
+              else estilo = "border-[var(--border)] text-[var(--text-muted)] opacity-60";
+            }
+            return (
+              <button
+                key={i}
+                onClick={() => responder(i)}
+                disabled={elegida !== null}
+                className={`card-select w-full flex items-center justify-between text-left rounded-lg border px-4 py-3 text-[14px] ${estilo}`}
+              >
+                <span>{op}</span>
+                {elegida !== null && esCorrecta && <IconCheck size={17} />}
+                {elegida !== null && esElegida && !esCorrecta && <IconX size={17} />}
+              </button>
+            );
+          })}
+        </div>
+
+        {elegida !== null && (
+          <button
+            onClick={siguiente}
+            className="press-btn mt-5 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--gold)] hover:bg-[var(--gold-bright)] text-[#0c100e] font-display font-semibold text-[15px] px-5 py-3"
+          >
+            {idx + 1 >= PREGUNTAS.length ? "Ver resultado" : "Siguiente"} <IconArrow size={15} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   NAVEGACIÓN INFERIOR
+--------------------------------------------------------- */
+function NavItem({ active, onClick, icon: Icon, label }) {
+  return (
+    <button
+      onClick={onClick}
+      className="press-btn flex-1 flex flex-col items-center justify-center gap-1 py-2.5"
+    >
+      <Icon size={21} className={active ? "text-[var(--green-bright)]" : "text-[var(--text-muted)]"} />
+      <span className={`font-display text-[10.5px] tracking-wide ${active ? "text-[var(--green-bright)] font-medium" : "text-[var(--text-muted)]"}`}>
+        {label}
+      </span>
+      {active && <span className="w-1 h-1 rounded-full bg-[var(--green-bright)] mt-0.5" />}
+    </button>
+  );
+}
+
+function BottomNav({ tab, setTab }) {
+  const items = [
+    { id: "funciones", label: "Funciones", icon: IconGear },
+    { id: "tipos", label: "Tipos", icon: IconDrop },
+    { id: "simulador", label: "Simulador", icon: IconFlask },
+    { id: "desafio", label: "Desafío", icon: IconBrain },
+  ];
+  return (
+    <nav className="fixed bottom-0 inset-x-0 z-30 border-t border-[var(--border)] bg-[var(--bg-elevated)]/95 backdrop-blur-sm">
+      <div className="max-w-2xl mx-auto flex">
+        {items.map((it) => (
+          <NavItem key={it.id} active={tab === it.id} onClick={() => setTab(it.id)} icon={it.icon} label={it.label} />
+        ))}
+      </div>
+    </nav>
+  );
+}
+
+/* ---------------------------------------------------------
+   APP
+--------------------------------------------------------- */
+function App() {
+  const [tab, setTab] = useState("funciones");
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [tab]);
+
+  return (
+    <div className="min-h-screen pb-24">
+      {tab === "funciones" && <PantallaFunciones onIrATipos={() => setTab("tipos")} />}
+      {tab === "tipos" && <PantallaTipos onIrASimulador={() => setTab("simulador")} />}
+      {tab === "simulador" && <PantallaSimulador />}
+      {tab === "desafio" && <PantallaDesafio />}
+      <BottomNav tab={tab} setTab={setTab} />
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
